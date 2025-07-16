@@ -4,18 +4,21 @@ export interface CheckpointModel {
   filename: string;
 }
 
+const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5002";
+
+// Fetch available checkpoint models
 export const fetchAvailableModels = async (): Promise<CheckpointModel[]> => {
   try {
-    const response = await fetch('http://localhost:5002/api/models');
+    const response = await fetch(`${API_BASE_URL}/api/models`);
     if (!response.ok) {
-      throw new Error('Failed to fetch models');
+      throw new Error(`Failed to fetch models: ${response.statusText}`);
     }
-    
+
     const data = await response.json();
     if (data.status === 'success' && Array.isArray(data.models)) {
       return data.models;
     } else {
-      throw new Error('Invalid response format');
+      throw new Error('Invalid response format when fetching models');
     }
   } catch (error) {
     console.error('Error fetching models:', error);
@@ -23,6 +26,7 @@ export const fetchAvailableModels = async (): Promise<CheckpointModel[]> => {
   }
 };
 
+// Interface for random prompt response
 export interface RandomPromptResponse {
   status: string;
   message: string;
@@ -30,51 +34,65 @@ export interface RandomPromptResponse {
   prompt: string;
 }
 
+// Fetch a random prompt (positive or negative)
 export const fetchRandomPrompt = async (type: 'positive' | 'negative'): Promise<string> => {
   try {
-    console.log(`🔄 Frontend: Calling fetch-prompt API with type: ${type}`);
-    const response = await fetch(`http://localhost:5002/api/fetch-prompt?type=${type}`);
+    console.log(`Calling fetch-prompt API with type: ${type}`);
+    const response = await fetch(`${API_BASE_URL}/api/fetch-prompt?type=${type}`);
     
     if (!response.ok) {
       throw new Error(`Failed to fetch ${type} prompt: ${response.statusText}`);
     }
     
     const data: RandomPromptResponse = await response.json();
-    console.log(`✅ Frontend: Received response:`, data);
-    
     if (data.status === 'success') {
       return data.prompt;
     } else {
-      throw new Error(data.message || 'Failed to fetch prompt');
+      throw new Error(data.message || `API failed to return ${type} prompt`);
     }
   } catch (error) {
-    console.error(`❌ Frontend: Error fetching ${type} prompt:`, error);
+    console.error(`Error fetching ${type} prompt:`, error);
     throw error;
   }
 };
 
-export const fetchUpscalerModels = async () => {
-  const response = await fetch('http://localhost:5002/api/upscaler-models');
-  const data = await response.json();
-  return data.models;
-}; 
+// Fetch available upscaler models
+export const fetchUpscalerModels = async (): Promise<string[]> => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/upscaler-models`);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch upscaler models: ${response.statusText}`);
+    }
 
+    const data = await response.json();
+    return data.models;
+  } catch (error) {
+    console.error('Error fetching upscaler models:', error);
+    throw error;
+  }
+};
+
+// Add an API-based model using alias and API key
 export const addAPIBasedModel = async (alias: string, apiKey: string): Promise<boolean> => {
-  const response = await fetch('http://localhost:5002/api/add-api-key', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      alias, 
-      'api-key': apiKey
-    }),
-  });
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/add-api-key`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        alias,
+        'api-key': apiKey,
+      }),
+    });
 
-  if (!response.ok) {
-    console.error('Failed to add API-based model');
+    if (!response.ok) {
+      throw new Error('Failed to add API-based model');
+    }
+
+    return true;
+  } catch (error) {
+    console.error('Error adding API-based model:', error);
     return false;
   }
-
-  return true;
 };
